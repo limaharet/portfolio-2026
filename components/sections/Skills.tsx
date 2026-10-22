@@ -8,7 +8,7 @@ import Image from 'next/image'
 const Skills = () => {
   
   return (
-    <section className='container mx-auto px-4 py-20'>
+    <section id="skills" className='container mx-auto px-4 py-20'>
       <h2 className='text-3xl font-bold mb-12 text-center'><span className='text-primary'>Skills</span> & Technologies</h2>
       <motion.div
       initial={{opacity:0 , y:20}}

@@ -113,15 +113,45 @@ const GithubStats = ({ username }: Props) => {
   };
 
   const today = new Date();
-  const startDate = new Date();
-  startDate.setDate(today.getDate() - 29); // exactly 30 days including today
+  const toDateKey = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const contributionCounts = new Map(
+    stats.contributions.map((day) => [day.date, day.count]),
+  );
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const month = new Date(
+      today.getFullYear(),
+      today.getMonth() - (5 - index),
+      1,
+    );
+    const daysInMonth = new Date(
+      month.getFullYear(),
+      month.getMonth() + 1,
+      0,
+    ).getDate();
+    const lastDay =
+      month.getMonth() === today.getMonth() &&
+      month.getFullYear() === today.getFullYear()
+      ? today.getDate()
+      : daysInMonth;
 
-  const last30Days = stats.contributions
-    .filter((day) => {
-      const date = new Date(day.date);
-      return date >= startDate && date <= today;
-    })
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    return {
+      date: month,
+      days: Array.from({ length: lastDay }, (_, dayIndex) => {
+        const date = new Date(
+          month.getFullYear(),
+          month.getMonth(),
+          dayIndex + 1,
+        );
+        const dateKey = toDateKey(date);
+
+        return {
+          date: dateKey,
+          count: contributionCounts.get(dateKey) ?? 0,
+        };
+      }),
+    };
+  });
 
   return (
     <Card className="p-4 sm:p-6 lg:p-8 bg-card border-border/5 backdrop-blur-sm overflow-hidden">
@@ -185,44 +215,88 @@ const GithubStats = ({ username }: Props) => {
         </div>
 
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-muted-foreground">
-            Last 30 days
-          </h4>
-          <div className="overflow-x-auto pb-4">
-            <div className="grid grid-rows-1 grid-flow-col gap-1 min-w-[600px]">
-              <TooltipProvider>
-                {last30Days.reverse().map((day, index) => (
-                  <motion.div
-                    key={day.date}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: index * 0.02 }}
-                  >
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <div
-                          className={cn(
-                            "h-6 w-6 sm:h-8 sm:w-8 rounded-sm",
-                            getContributionLevel(day.count),
-                            "transition-all duration-200 hover:scale-110",
-                          )}
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs font-semibold text-black">
-                          {day.count} contributions on{" "}
-                          {new Date(day.date).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </motion.div>
-                ))}
-              </TooltipProvider>
+          <div className="flex items-center justify-between gap-4">
+            <h4 className="text-sm font-medium text-muted-foreground">
+              Last 6 months GitHub Contributions
+            </h4>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span>Less</span>
+              {[
+                "bg-muted",
+                "bg-primary/30",
+                "bg-primary/50",
+                "bg-primary/70",
+                "bg-primary",
+              ].map((level) => (
+                <span
+                  key={level}
+                  className={cn("h-3 w-3 rounded-[3px]", level)}
+                />
+              ))}
+              <span>More</span>
             </div>
           </div>
+          <TooltipProvider>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {months.map(({ date, days }) => (
+                <div
+                  key={`${date.getFullYear()}-${date.getMonth()}`}
+                  className="rounded-lg border border-border/50 bg-secondary/20 p-3 sm:p-4"
+                >
+                  <h5 className="mb-3 text-sm font-medium">
+                    {date.toLocaleDateString(undefined, {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </h5>
+                  <div className="grid grid-cols-7 gap-1">
+                    {["S", "M", "T", "W", "T", "F", "S"].map(
+                      (weekday, index) => (
+                        <span
+                          key={`${weekday}-${index}`}
+                          className="pb-1 text-center text-[10px] text-muted-foreground"
+                        >
+                          {weekday}
+                        </span>
+                      ),
+                    )}
+                    {Array.from({
+                      length: new Date(
+                        date.getFullYear(),
+                        date.getMonth(),
+                        1,
+                      ).getDay(),
+                    }, (_, index) => (
+                      <span key={`empty-${index}`} aria-hidden="true" />
+                    ))}
+                    {days.map((day) => (
+                      <Tooltip key={day.date}>
+                        <TooltipTrigger
+                          aria-label={`${day.count} contributions on ${day.date}`}
+                          className={cn(
+                            "aspect-square w-full rounded-[3px] transition-colors hover:ring-1 hover:ring-primary/70",
+                            getContributionLevel(day.count),
+                          )}
+                        />
+                        <TooltipContent>
+                          <p className="text-xs font-semibold text-black">
+                            {day.count} contributions on{" "}
+                            {new Date(
+                              `${day.date}T00:00:00`,
+                            ).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TooltipProvider>
         </div>
       </motion.div>
     </Card>
